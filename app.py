@@ -6,6 +6,18 @@ import asyncio
 from typing import List, Tuple, Optional
 import gradio as gr
 
+try:
+    import spaces
+except ImportError:
+    class _MockSpaces:
+        def GPU(self, *args, **kwargs):
+            if args and callable(args[0]):
+                return args[0]
+            def decorator(fn):
+                return fn
+            return decorator
+    spaces = _MockSpaces()
+
 # Ensure backend package is bound properly into sys.modules
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
@@ -41,6 +53,7 @@ def download_youtube_video(url: str, output_dir: str) -> str:
         return filename
 
 
+@spaces.GPU(duration=120)
 def process_video_pipeline(
     video_file,
     youtube_url: str,
