@@ -2,7 +2,7 @@
 title: ClipForge AI
 emoji: 🎬
 colorFrom: red
-colorTo: amber
+colorTo: yellow
 sdk: gradio
 sdk_version: 6.31.0
 app_file: app.py
