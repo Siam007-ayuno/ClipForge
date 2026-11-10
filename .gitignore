@@ -1,0 +1,50 @@
+# Virtual environments
+.venv/
+backend/.venv/
+env/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+backend/**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+frontend/node_modules/
+frontend/.next/
+.next/
+.vercel/
+frontend/.vercel/
+
+# Database & SQLite files
+*.db
+*.db-shm
+*.db-wal
+backend/*.db*
+clipforge.db
+
+# Storage & media uploads
+backend/storage_data/
+storage_data/
+*.mp4
+*.wav
+*.mp3
+*.mov
+*.avi
+*.mkv
+*.ass
+*.srt
+!frontend/public/**
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
