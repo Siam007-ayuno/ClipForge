@@ -48,16 +48,3 @@ storage_data/
 # OS files
 .DS_Store
 Thumbs.db
-
-# Local scripts
-deploy-to-space.bat
-launch-desktop.bat
-stop-clipforge.bat
-silent-runner.vbs
-create-desktop-shortcut.ps1
-Dockerfile
-docker-compose.yml
-start-cloud.sh
-README_HUGGINGFACE.md
-app_icon.ico
-frontend/

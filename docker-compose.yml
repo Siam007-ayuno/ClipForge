@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  clipforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: clipforge:latest
+    container_name: clipforge_app
+    ports:
+      - "3000:7860"
+    environment:
+      - PORT=7860
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - LLM_PROVIDER=gemini
+    volumes:
+      - clipforge_storage:/app/backend/storage_data
+    restart: unless-stopped
+
+volumes:
+  clipforge_storage:
