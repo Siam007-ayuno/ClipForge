@@ -8,15 +8,31 @@ from app.core.config import settings
 
 
 def get_ffmpeg_executable() -> str:
-    """Returns the path to the ffmpeg executable."""
+    """Returns the path to the ffmpeg executable across system, venv, and imageio."""
     bin_path = shutil.which("ffmpeg")
     if bin_path:
         return bin_path
+
+    # Check right next to current python interpreter
+    import sys
+    py_dir_ffmpeg = os.path.join(os.path.dirname(sys.executable), "ffmpeg.exe")
+    if os.path.isfile(py_dir_ffmpeg):
+        return py_dir_ffmpeg
+
     venv_ffmpeg = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..", ".venv", "Scripts", "ffmpeg.exe")
     )
     if os.path.isfile(venv_ffmpeg):
         return venv_ffmpeg
+
+    try:
+        import imageio_ffmpeg
+        img_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        if os.path.isfile(img_exe):
+            return img_exe
+    except Exception:
+        pass
+
     return "ffmpeg"
 
 

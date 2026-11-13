@@ -26,7 +26,7 @@ if BASE_DIR not in sys.path:
 import backend.app as backend_app
 sys.modules["app"] = backend_app
 
-from app.services.audio_extractor import AudioExtractor
+from app.services.audio_extractor import AudioExtractor, get_ffmpeg_executable
 from app.services.transcription import TranscriptionService
 from app.services.virality import ViralityService
 from app.services.captions import CaptionGenerator, hex_to_ass_color
@@ -34,6 +34,13 @@ from app.services.video_renderer import VideoRenderer
 from app.services.srt_service import SrtService
 from app.services.social_service import SocialService
 import yt_dlp
+
+# Ensure ffmpeg directory is in system PATH at startup for yt-dlp and rendering
+_ffmpeg_exe = get_ffmpeg_executable()
+if _ffmpeg_exe and os.path.isfile(_ffmpeg_exe):
+    _ffmpeg_dir = os.path.dirname(os.path.abspath(_ffmpeg_exe))
+    if _ffmpeg_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = _ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
 
 def clean_youtube_url(url: str) -> str:
@@ -52,8 +59,12 @@ def clean_youtube_url(url: str) -> str:
 def download_youtube_video(url: str, output_dir: str, max_height: int = 720, cookie_file: Optional[str] = None) -> str:
     """Downloads a YouTube video stream capped at specified resolution for speed."""
     clean_url = clean_youtube_url(url)
+    
+    ffmpeg_bin = get_ffmpeg_executable()
+    ffmpeg_dir = os.path.dirname(os.path.abspath(ffmpeg_bin)) if ffmpeg_bin and os.path.isfile(ffmpeg_bin) else None
+
     ydl_opts = {
-        "format": f"bestvideo[height<={max_height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={max_height}][ext=mp4]/best",
+        "format": f"best[height<={max_height}][ext=mp4]/bestvideo[height<={max_height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={max_height}]/best",
         "outtmpl": os.path.join(output_dir, "source.%(ext)s"),
         "merge_output_format": "mp4",
         "quiet": True,
@@ -61,6 +72,8 @@ def download_youtube_video(url: str, output_dir: str, max_height: int = 720, coo
         "socket_timeout": 30,
         "retries": 3,
     }
+    if ffmpeg_dir:
+        ydl_opts["ffmpeg_location"] = ffmpeg_dir
 
     # Auto-detect cookies.txt or passed file
     if cookie_file and os.path.isfile(cookie_file):

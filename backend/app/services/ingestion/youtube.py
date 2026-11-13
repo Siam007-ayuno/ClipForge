@@ -6,6 +6,7 @@ from typing import Optional
 import yt_dlp
 from app.services.ingestion.base import IngestionProvider, IngestionResult
 from app.services.storage import get_storage_service
+from app.services.audio_extractor import get_ffmpeg_executable
 from app.core.config import settings
 
 
@@ -26,16 +27,16 @@ class YouTubeIngestionProvider(IngestionProvider):
         out_template = os.path.join(temp_dir, f"{unique_id}_%(id)s.%(ext)s")
 
         # Locate ffmpeg executable
-        ffmpeg_bin = shutil.which("ffmpeg")
-        if not ffmpeg_bin:
-            venv_ffmpeg = os.path.abspath(
-                os.path.join(os.path.dirname(__file__), "..", "..", "..", ".venv", "Scripts", "ffmpeg.exe")
-            )
-            if os.path.isfile(venv_ffmpeg):
-                ffmpeg_bin = venv_ffmpeg
+        ffmpeg_bin = get_ffmpeg_executable()
+        if ffmpeg_bin and os.path.isfile(ffmpeg_bin):
+            ffmpeg_dir = os.path.dirname(os.path.abspath(ffmpeg_bin))
+            if ffmpeg_dir not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+        else:
+            ffmpeg_dir = None
 
         ydl_opts = {
-            "format": "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
+            "format": "best[height<=1080][ext=mp4]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080]/best",
             "outtmpl": out_template,
             "noplaylist": True,
             "quiet": True,
@@ -46,8 +47,8 @@ class YouTubeIngestionProvider(IngestionProvider):
             "retries": 3,
             "js_runtimes": {"node": {}},
         }
-        if ffmpeg_bin:
-            ydl_opts["ffmpeg_location"] = os.path.dirname(ffmpeg_bin)
+        if ffmpeg_dir:
+            ydl_opts["ffmpeg_location"] = ffmpeg_dir
 
         # Run yt_dlp in a thread pool to avoid blocking the event loop
         def run_ydl():
