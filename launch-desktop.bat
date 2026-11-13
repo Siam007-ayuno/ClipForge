@@ -21,7 +21,7 @@ if %errorlevel% neq 0 (
 netstat -ano | findstr ":3000 " | findstr "LISTENING" >nul
 if %errorlevel% neq 0 (
     echo [*] Starting ClipForge Studio Frontend on port 3000...
-    start /min "ClipForge Frontend" cmd /c "cd /d "%~dp0frontend" && npm run dev -- -p 3000"
+    start /min "ClipForge Frontend" cmd /c "cd /d "%~dp0frontend" && npm run start -- -p 3000"
 ) else (
     echo [v] Frontend is already active on port 3000.
 )
