@@ -14,14 +14,17 @@ class ViralityService:
         transcript_text: str,
         segments: List[Dict[str, Any]],
         num_clips: Optional[int] = None,
+        min_duration: Optional[float] = None,
+        max_duration: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """
         1. Segment and query LLM for top viral moments.
         2. Validate and snap timestamps strictly to word & sentence boundaries.
+        Supports custom min/max duration (e.g. 20-30s for ultra-fast shorts).
         """
         target_count = num_clips or settings.TARGET_CLIPS_COUNT
-        min_dur = settings.MIN_CLIP_DURATION
-        max_dur = settings.MAX_CLIP_DURATION
+        min_dur = min_duration if min_duration is not None else settings.MIN_CLIP_DURATION
+        max_dur = max_duration if max_duration is not None else settings.MAX_CLIP_DURATION
 
         # If transcript is too short (< min_dur), create one full clip if segments exist
         total_len = segments[-1]["end"] if segments else 0

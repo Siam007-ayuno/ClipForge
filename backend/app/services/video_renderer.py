@@ -36,6 +36,8 @@ class VideoRenderer:
         music_ducking: bool = True,
         watermark_path: Optional[str] = None,
         remove_filler_words: bool = False,
+        preset: str = "veryfast",
+        crf: int = 23,
     ) -> Dict[str, Any]:
         """
         Executes FFmpeg pipeline: Trim -> Face/Aspect Reframe -> Burn Captions -> Audio Mix -> H.264 encode.
@@ -129,11 +131,13 @@ class VideoRenderer:
 
         cmd.extend([
             "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "22",
+            "-preset", preset,
+            "-tune", "fastdecode",
+            "-crf", str(crf),
+            "-threads", "0",
             "-pix_fmt", "yuv420p",
             "-c:a", "aac",
-            "-b:a", "192k",
+            "-b:a", "128k",
             "-ar", "44100",
             "-movflags", "+faststart",
             output_mp4_path,

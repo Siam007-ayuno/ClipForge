@@ -2,7 +2,7 @@ import os
 import shutil
 import subprocess
 import json
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
 from app.services.storage import get_storage_service
 from app.core.config import settings
 
@@ -66,21 +66,26 @@ class AudioExtractor:
 
         return metadata
 
-    def extract_audio(self, video_path: str, output_wav_path: str) -> str:
+    def extract_audio(self, video_path: str, output_wav_path: str, max_duration: Optional[float] = None) -> str:
         """
         Extracts 16kHz mono 16-bit PCM WAV audio for optimal Whisper transcription.
+        If max_duration is specified, limits extraction to the first N seconds for 10x faster scans.
         """
         os.makedirs(os.path.dirname(output_wav_path), exist_ok=True)
         cmd = [
             self.ffmpeg_bin,
             "-y",
+        ]
+        if max_duration and max_duration > 0:
+            cmd.extend(["-t", str(max_duration)])
+        cmd.extend([
             "-i", video_path,
             "-vn",
             "-acodec", "pcm_s16le",
             "-ar", "16000",
             "-ac", "1",
             output_wav_path,
-        ]
+        ])
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace")
         if res.returncode != 0:
             raise RuntimeError(f"FFmpeg audio extraction failed: {res.stderr}")

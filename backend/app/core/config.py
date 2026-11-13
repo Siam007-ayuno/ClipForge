@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     WHISPER_COMPUTE_TYPE: str = "int8" # "int8", "float16", "float32"
 
     # Clip Extraction Constraints
-    MIN_CLIP_DURATION: float = 30.0   # minimum clip seconds
-    MAX_CLIP_DURATION: float = 90.0   # maximum clip seconds
+    MIN_CLIP_DURATION: float = 20.0   # minimum clip seconds (20-30s turbo shorts)
+    MAX_CLIP_DURATION: float = 60.0   # maximum clip seconds
     TARGET_CLIPS_COUNT: int = 5       # number of top viral clips to extract
 
     # Uploads

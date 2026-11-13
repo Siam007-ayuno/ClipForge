@@ -146,8 +146,8 @@ Respond ONLY with a valid JSON array of objects. Do not include markdown formatt
         total_duration = segments[-1]["end"] if segments else 0
         clips = []
 
-        # Target window length around 45 to 60 seconds
-        target_dur = 45.0
+        # Target window length dynamically scaled to min_dur and max_dur
+        target_dur = max(min_dur, min(max_dur, (min_dur + max_dur) / 2.0))
         step = max(target_dur, total_duration / (num_clips + 1)) if total_duration > target_dur else target_dur
 
         current_start = 0.0
@@ -157,7 +157,7 @@ Respond ONLY with a valid JSON array of objects. Do not include markdown formatt
             # Find segments within window
             window_segments = [
                 s for s in segments
-                if s["start"] >= current_start and s["end"] <= current_start + max_dur
+                if s["start"] >= current_start and s["end"] <= current_start + target_dur + 3.0
             ]
 
             if not window_segments or (window_segments[-1]["end"] - window_segments[0]["start"]) < min_dur:

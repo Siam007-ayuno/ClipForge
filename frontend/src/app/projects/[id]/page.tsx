@@ -40,6 +40,7 @@ export default function ProjectDetailPage() {
   const [isBatchRendering, setIsBatchRendering] = useState(false);
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [durationPreset, setDurationPreset] = useState<"20-30" | "30-60" | "60-90">("20-30");
 
   const handleDownloadAllZip = async (resolution = "1080p") => {
     if (!projectId || !project) return;
@@ -116,7 +117,9 @@ export default function ProjectDetailPage() {
     try {
       setIsProcessing(true);
       setErrorMessage(null);
-      const updated = await apiPipeline.triggerProcess(projectId);
+      const min_duration = durationPreset === "20-30" ? 20 : durationPreset === "30-60" ? 30 : 60;
+      const max_duration = durationPreset === "20-30" ? 30 : durationPreset === "30-60" ? 60 : 90;
+      const updated = await apiPipeline.triggerProcess(projectId, { min_duration, max_duration });
       setProject(updated);
     } catch (err: any) {
       console.error("Pipeline trigger error", err);
@@ -236,15 +239,53 @@ export default function ProjectDetailPage() {
             </h1>
           </div>
 
-          {/* Action Trigger Button */}
+          {/* Action Trigger & Speed Controls */}
           {!isPipelineRunning && project?.source_video && (
-            <button
-              onClick={handleStartProcessing}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 via-amber-600 to-rose-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-rose-600/20 hover:opacity-95 transition-all self-start sm:self-auto transform hover:-translate-y-0.5"
-            >
-              <Sparkles className="h-4 w-4" />
-              {hasClips ? "Re-Run AI Clipping" : "Extract Viral Clips (Phase 2)"}
-            </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setDurationPreset("20-30")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    durationPreset === "20-30"
+                      ? "bg-rose-600 text-white shadow-md shadow-rose-600/30"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  ⚡ 20-30s (Turbo Fast)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDurationPreset("30-60")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    durationPreset === "30-60"
+                      ? "bg-rose-600 text-white shadow-md shadow-rose-600/30"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  30-60s
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDurationPreset("60-90")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    durationPreset === "60-90"
+                      ? "bg-rose-600 text-white shadow-md shadow-rose-600/30"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  60-90s
+                </button>
+              </div>
+
+              <button
+                onClick={handleStartProcessing}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 via-amber-600 to-rose-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-rose-600/20 hover:opacity-95 transition-all transform hover:-translate-y-0.5 whitespace-nowrap"
+              >
+                <Sparkles className="h-4 w-4" />
+                {hasClips ? "Re-Run AI Clipping" : "Extract Viral Clips"}
+              </button>
+            </div>
           )}
         </div>
 

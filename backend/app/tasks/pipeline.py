@@ -94,7 +94,11 @@ def execute_url_import_pipeline(project_id: str, url: str, custom_title: Optiona
         db.close()
 
 
-def execute_pipeline(project_id: str):
+def execute_pipeline(
+    project_id: str,
+    min_duration: Optional[float] = None,
+    max_duration: Optional[float] = None,
+):
     """
     Core AI Pipeline:
     1. Audio extraction & probing (0% - 15%)
@@ -169,6 +173,8 @@ def execute_pipeline(project_id: str):
         clips_data = asyncio.run(virality_service.detect_clips(
             transcript_text=trans_result.raw_text,
             segments=trans_result.segments,
+            min_duration=min_duration,
+            max_duration=max_duration,
         ))
 
         update_project_progress(project_id, "detecting_highlights", 90, db=db)

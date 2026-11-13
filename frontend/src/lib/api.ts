@@ -301,8 +301,15 @@ export const apiClips = {
 
 // AI Pipeline & Clips API
 export const apiPipeline = {
-  async triggerProcess(projectId: string): Promise<Project> {
-    const res = await apiClient.post<Project>(`/projects/${projectId}/process`);
+  async triggerProcess(
+    projectId: string,
+    options?: { min_duration?: number; max_duration?: number }
+  ): Promise<Project> {
+    const params = new URLSearchParams();
+    if (options?.min_duration) params.append("min_duration", options.min_duration.toString());
+    if (options?.max_duration) params.append("max_duration", options.max_duration.toString());
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const res = await apiClient.post<Project>(`/projects/${projectId}/process${query}`);
     return res.data;
   },
 

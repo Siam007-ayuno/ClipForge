@@ -167,12 +167,15 @@ def delete_project(
 async def process_project_video(
     project_id: str,
     background_tasks: BackgroundTasks,
+    min_duration: Optional[float] = None,
+    max_duration: Optional[float] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
     """
     Triggers Phase 2 AI video processing pipeline:
     Audio Extraction -> Speech-to-Text (Whisper) -> Topic Segmentation -> Virality Scoring.
+    Supports min_duration and max_duration query params for fast 20-30s shorts.
     """
     project = (
         db.query(Project)
@@ -198,7 +201,7 @@ async def process_project_video(
     db.commit()
 
     # Dispatch pipeline in background task
-    background_tasks.add_task(execute_pipeline, project.id)
+    background_tasks.add_task(execute_pipeline, project.id, min_duration, max_duration)
 
     resp = ProjectResponse.model_validate(project)
     resp.clips_count = len(project.clips) if project.clips else 0
