@@ -51,17 +51,36 @@ class YouTubeIngestionProvider(IngestionProvider):
 
         # Run yt_dlp in a thread pool to avoid blocking the event loop
         def run_ydl():
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                downloaded_file = ydl.prepare_filename(info)
-                # Ensure actual extension if remuxed
-                if not os.path.exists(downloaded_file):
-                    base, _ = os.path.splitext(downloaded_file)
-                    for ext in [".mp4", ".mkv", ".webm"]:
-                        if os.path.exists(base + ext):
-                            downloaded_file = base + ext
-                            break
-                return info, downloaded_file
+            # Auto-detect cookies.txt if present
+            cookie_candidates = [
+                os.path.join(os.getcwd(), "cookies.txt"),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "cookies.txt")),
+            ]
+            for c in cookie_candidates:
+                if os.path.isfile(c):
+                    ydl_opts["cookiefile"] = c
+                    break
+
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    downloaded_file = ydl.prepare_filename(info)
+                    # Ensure actual extension if remuxed
+                    if not os.path.exists(downloaded_file):
+                        base, _ = os.path.splitext(downloaded_file)
+                        for ext in [".mp4", ".mkv", ".webm"]:
+                            if os.path.exists(base + ext):
+                                downloaded_file = base + ext
+                                break
+                    return info, downloaded_file
+            except Exception as e:
+                err_msg = str(e)
+                if "Sign in to confirm your age" in err_msg or "age-restricted" in err_msg.lower():
+                    raise ValueError(
+                        "YouTube Age Restriction: This video is 18+ age-restricted by YouTube. "
+                        "Please download the video and upload it directly via Direct Upload, or place a cookies.txt file in the workspace."
+                    )
+                raise
 
         info, downloaded_filepath = await asyncio.to_thread(run_ydl)
 

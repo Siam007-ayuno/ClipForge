@@ -36,27 +36,74 @@ from app.services.social_service import SocialService
 import yt_dlp
 
 
-def download_youtube_video(url: str, output_dir: str, max_height: int = 720) -> str:
+def clean_youtube_url(url: str) -> str:
+    """Strips tracking query parameters (like ?si=...) from YouTube links."""
+    clean = url.strip()
+    import re
+    match = re.search(r"youtu\.be/([a-zA-Z0-9_-]{11})", clean)
+    if match:
+        return f"https://www.youtube.com/watch?v={match.group(1)}"
+    match = re.search(r"youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})", clean)
+    if match:
+        return f"https://www.youtube.com/watch?v={match.group(1)}"
+    return clean
+
+
+def download_youtube_video(url: str, output_dir: str, max_height: int = 720, cookie_file: Optional[str] = None) -> str:
     """Downloads a YouTube video stream capped at specified resolution for speed."""
+    clean_url = clean_youtube_url(url)
     ydl_opts = {
         "format": f"bestvideo[height<={max_height}][ext=mp4]+bestaudio[ext=m4a]/best[height<={max_height}][ext=mp4]/best",
         "outtmpl": os.path.join(output_dir, "source.%(ext)s"),
         "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
+        "socket_timeout": 30,
+        "retries": 3,
     }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info)
-        if not filename.endswith(".mp4"):
-            filename = os.path.splitext(filename)[0] + ".mp4"
-        return filename
+
+    # Auto-detect cookies.txt or passed file
+    if cookie_file and os.path.isfile(cookie_file):
+        ydl_opts["cookiefile"] = cookie_file
+    elif os.path.isfile("cookies.txt"):
+        ydl_opts["cookiefile"] = "cookies.txt"
+    elif os.path.isfile(os.path.join(BASE_DIR, "cookies.txt")):
+        ydl_opts["cookiefile"] = os.path.join(BASE_DIR, "cookies.txt")
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(clean_url, download=True)
+            filename = ydl.prepare_filename(info)
+            if not filename.endswith(".mp4"):
+                base, _ = os.path.splitext(filename)
+                for ext in [".mp4", ".mkv", ".webm"]:
+                    if os.path.exists(base + ext):
+                        filename = base + ext
+                        break
+            return filename
+    except Exception as e:
+        err_msg = str(e)
+        if "Sign in to confirm your age" in err_msg or "age-restricted" in err_msg.lower():
+            raise gr.Error(
+                "🔞 YouTube Age Restriction Detected:\n\n"
+                "This video is 18+ age-restricted by YouTube. YouTube blocks anonymous downloads and requires an adult account session.\n\n"
+                "💡 Two simple solutions:\n"
+                "1. Download the MP4 on your device and upload it directly in the 'Direct Video Upload' tab (Instant & always works!).\n"
+                "2. Or export a 'cookies.txt' file from your logged-in browser and upload it under the 'Advanced / Age-Restricted' section below."
+            )
+        elif "Private video" in err_msg:
+            raise gr.Error("🔒 This YouTube video is marked Private by the uploader and cannot be accessed.")
+        elif "Video unavailable" in err_msg:
+            raise gr.Error("❌ This video is unavailable or has been removed from YouTube.")
+        else:
+            raise gr.Error(f"YouTube Download Error: {err_msg}")
 
 
 @spaces.GPU(duration=120)
 def process_video_pipeline(
     video_file,
     youtube_url: str,
+    cookie_file,
     duration_option: str,
     scan_mode: str,
     aspect_ratio: str,
@@ -96,6 +143,9 @@ def process_video_pipeline(
     # Parse Whisper model size
     whisper_size = "tiny" if "tiny" in model_speed else "base"
 
+    # Parse optional cookie file
+    cookie_path = cookie_file if isinstance(cookie_file, str) else getattr(cookie_file, "name", None)
+
     work_dir = tempfile.mkdtemp(prefix="clipforge_")
 
     try:
@@ -105,7 +155,7 @@ def process_video_pipeline(
             source_path = video_file
         elif youtube_url and youtube_url.strip():
             progress(0.10, desc=f"Downloading video from YouTube link (max {target_res})...")
-            source_path = download_youtube_video(youtube_url.strip(), work_dir, max_height=max_h)
+            source_path = download_youtube_video(youtube_url.strip(), work_dir, max_height=max_h, cookie_file=cookie_path)
         else:
             raise gr.Error("Please provide either a video file upload or a valid YouTube URL.")
 
@@ -277,6 +327,15 @@ with gr.Blocks(title="ClipForge AI") as demo:
                     label="YouTube Video Link",
                     placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/...",
                 )
+                with gr.Accordion("🍪 Optional YouTube Cookies (for Age-Restricted / 18+ Videos)", open=False):
+                    cookie_input = gr.File(
+                        label="Upload cookies.txt file",
+                        file_types=[".txt"],
+                        file_count="single",
+                    )
+                    gr.Markdown(
+                        "<small style='color: #a1a1aa;'>If YouTube requires signing in for 18+ age-gated videos, export cookies from your logged-in browser (via 'Get cookies.txt LOCALLY' extension) and upload here.</small>"
+                    )
             with gr.Tab("Direct Video Upload"):
                 file_input = gr.Video(label="Upload Video File (MP4, MOV)", sources=["upload"])
 
@@ -350,6 +409,7 @@ with gr.Blocks(title="ClipForge AI") as demo:
         inputs=[
             file_input,
             yt_input,
+            cookie_input,
             duration_dropdown,
             speed_dropdown,
             ratio_dropdown,
